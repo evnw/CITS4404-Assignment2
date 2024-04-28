@@ -1,5 +1,9 @@
-# Imports
+# adds/changes
+# modified colour_at_t
+# added get_mean_colour_under
+# added get_dots
 
+# Imports
 import numpy as np
 import imageio.v3 as iio
 
@@ -69,10 +73,31 @@ class Camo_Worm:
         eds = euclidean_distances(intermediates,intermediates)
         return np.sum(np.diag(eds,1))
 
+    # def colour_at_t(self, t, image):
+    #     intermediates = np.int64(np.round(np.array(self.bezier.point_at_t(t)).reshape(-1,2)))
+    #     colours = [image[point[1],point[0]] for point in intermediates]
+    #     return(np.array(colours)/255)
+
     def colour_at_t(self, t, image):
-        intermediates = np.int64(np.round(np.array(self.bezier.point_at_t(t)).reshape(-1,2)))
-        colours = [image[point[1],point[0]] for point in intermediates]
-        return(np.array(colours)/255)
+        point = np.int64(np.round(np.array(self.bezier.point_at_t(t)).reshape(-1,2)))[0]
+        # ignore points outside image
+        xmin, xmax = [0, image.shape[0]]
+        ymin, ymax = [0, image.shape[1]]
+        if(    point[1] > xmin
+           and point[1] < xmax
+           and point[0] > ymin
+           and point[0] < ymax ):
+            colours = image[point[1],point[0]] # reversed as [y, x]
+            colour = np.array(colours)/255
+            return colour
+        else:
+            return -1
+    
+    def get_mean_colour_under(self, num_intervals, image):
+        t_vals = np.linspace(0,1,num_intervals)
+        avg_colour = np.mean([self.colour_at_t(t, image) for t in t_vals])
+        return avg_colour
+
 
 class Drawing:
     def __init__ (self, image):
@@ -131,3 +156,17 @@ def initialise_clew (size, imshape, init_params):
     for i in range(size):
         clew.append(random_worm(imshape, init_params))
     return clew
+
+def observe_clew(clew, image):
+    dots=[]
+    for worm in clew:
+        (p1,p2,p3) = worm.intermediate_points(3)
+        dots.append(p1)
+        dots.append(p2)
+        dots.append(p3)
+
+    drawing = Drawing(image)
+    drawing.add_worms(clew)
+    drawing.add_dots(dots, 1, color="yellow")
+    drawing.show()
+    return
