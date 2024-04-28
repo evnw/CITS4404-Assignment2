@@ -71,7 +71,7 @@ class Camo_Worm:
 
     def colour_at_t(self, t, image):
         intermediates = np.int64(np.round(np.array(self.bezier.point_at_t(t)).reshape(-1,2)))
-        colours = [image[point[0],point[1]] for point in intermediates]
+        colours = [image[point[1],point[0]] for point in intermediates]
         return(np.array(colours)/255)
 
 class Drawing:
