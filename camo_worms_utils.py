@@ -6,6 +6,7 @@
 # Imports
 import numpy as np
 import imageio.v3 as iio
+import math
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -39,6 +40,14 @@ def prep_image (imdir, imname, mask):
     plt.show()
     return image
 
+def points_in_circle_np(radius, x0=0, y0=0, ):
+    x_ = np.arange(x0 - radius - 1, x0 + radius + 1, dtype=int)
+    y_ = np.arange(y0 - radius - 1, y0 + radius + 1, dtype=int)
+    x, y = np.where((x_[:,np.newaxis] - x0)**2 + (y_ - y0)**2 <= radius**2)
+    # x, y = np.where((np.hypot((x_-x0)[:,np.newaxis], y_-y0)<= radius)) # alternative implementation
+    for x, y in zip(x_[x], y_[y]):
+        yield x, y
+
 class Camo_Worm:
     def __init__(self, x, y, r, theta, deviation_r, deviation_gamma, width, colour):
         self.x = x
@@ -63,13 +72,13 @@ class Camo_Worm:
     def patch (self):
         return mpatches.PathPatch(self.path(), fc='None', ec=str(self.colour), lw=self.width, capstyle='round')
 
-    def intermediate_points (self, intervals=None):
+    def intermediate_points(self, intervals=None):
         if intervals is None:
             intervals = max(3, int(np.ceil(self.r/8)))
         return self.bezier.point_at_t(np.linspace(0,1,intervals))
 
-    def approx_length (self):
-        intermediates = intermediate_points(self)
+    def approx_length(self):
+        intermediates = self.intermediate_points()
         eds = euclidean_distances(intermediates,intermediates)
         return np.sum(np.diag(eds,1))
 
@@ -93,10 +102,29 @@ class Camo_Worm:
         else:
             return -1
     
-    def get_mean_colour_under(self, num_intervals, image):
-        t_vals = np.linspace(0,1,num_intervals)
-        avg_colour = np.mean([self.colour_at_t(t, image) for t in t_vals])
-        return avg_colour
+    # def get_mean_colour_under(self, num_intervals, image):
+    #     t_vals = np.linspace(0,1,num_intervals)
+    #     avg_colour = np.mean([self.colour_at_t(t, image) for t in t_vals])
+    #     return avg_colour
+
+    def points_in_worm(self):
+        n_points = math.ceil(self.approx_length() / self.width)
+        points = []
+        for point in self.intermediate_points(n_points):
+            points += points_in_circle_np(self.width, point[0], point[1])
+        return list(set(points))
+    
+    def get_mean_colour_under(self, image):
+        colours = []
+        xmin, xmax = [0, image.shape[0]]
+        ymin, ymax = [0, image.shape[1]]
+        for point in self.points_in_worm():
+            if(    point[1] > xmin
+                and point[1] < xmax
+                and point[0] > ymin
+                and point[0] < ymax ):
+                colours += [image[point[1], point[0]]]
+        return np.mean(np.array(colours)/255)
 
 
 class Drawing:
