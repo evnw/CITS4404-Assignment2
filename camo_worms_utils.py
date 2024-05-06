@@ -371,3 +371,32 @@ def observe_clew(clew, image):
     drawing.add_dots(dots, 1, color="yellow")
     drawing.show()
     return
+
+
+
+def count_overlaps(worm_idx, clew):
+        worm = clew[worm_idx]
+        
+        count = 0
+        for i in range(len(clew)):
+            if i is not worm_idx:
+                # base off of three intermediate points
+                # i.e. add one to count if any points are too close
+                points_worm = worm.intermediate_points()
+                points_other = clew[i].intermediate_points()
+                
+                combos = list(product(points_worm, points_other))
+
+                for point_worm, point_other in combos:
+                    euclid_dist = np.linalg.norm(
+                        np.array(point_worm)-np.array(point_other)
+                    )
+                    # print(f"Points {point_worm}, {point_other}")
+                    # print(f"Widths {worm.width}, {clew[i].width}")
+                    # print(f"Dist {euclid_dist}\n")
+                    if euclid_dist < worm.width + clew[i].width:
+                        # theyre touching
+                        count += 1
+                        break
+        proportion = count/(len(clew)-1)
+        return proportion
