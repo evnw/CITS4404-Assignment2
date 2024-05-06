@@ -124,6 +124,9 @@ class Camo_Worm:
                 and point[0] > ymin
                 and point[0] < ymax ):
                 colours += [image[point[1], point[0]]]
+        # if len 0 then entirely off screen so penalise
+        if len(colours) == 0:
+            colours += [100*255]
         return np.mean(np.array(colours)/255)
 
 
