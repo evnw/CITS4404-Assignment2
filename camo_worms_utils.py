@@ -40,9 +40,9 @@ def prep_image (imdir, imname, mask):
     plt.show()
     return image
 
-def points_in_circle_np(radius, x0=0, y0=0, ):
-    x_ = np.arange(x0 - radius - 1, x0 + radius + 1, dtype=int)
-    y_ = np.arange(y0 - radius - 1, y0 + radius + 1, dtype=int)
+def points_in_circle_np(radius, x0=0, y0=0):
+    x_ = np.arange(int(x0 - radius - 1), int(x0 + radius + 1))
+    y_ = np.arange(int(y0 - radius - 1), int(y0 + radius + 1))
     x, y = np.where((x_[:,np.newaxis] - x0)**2 + (y_ - y0)**2 <= radius**2)
     # x, y = np.where((np.hypot((x_-x0)[:,np.newaxis], y_-y0)<= radius)) # alternative implementation
     for x, y in zip(x_[x], y_[y]):
@@ -107,14 +107,14 @@ class Camo_Worm:
     #     avg_colour = np.mean([self.colour_at_t(t, image) for t in t_vals])
     #     return avg_colour
 
-    def points_in_worm(self):
-        n_points = math.ceil(self.approx_length() / self.width)
+    def points_in_worm(self, n_points_mod: float=1.0):
+        n_points = math.ceil(self.approx_length() * n_points_mod / self.width)
         points = []
         for point in self.intermediate_points(n_points):
             points += points_in_circle_np(self.width, point[0], point[1])
         return list(set(points))
     
-    def get_mean_colour_under(self, image):
+    def get_colour_under(self, image):
         colours = []
         xmin, xmax = [0, image.shape[0]]
         ymin, ymax = [0, image.shape[1]]
@@ -124,10 +124,34 @@ class Camo_Worm:
                 and point[0] > ymin
                 and point[0] < ymax ):
                 colours += [image[point[1], point[0]]]
-        # if len 0 then entirely off screen so penalise
+        # if len 0 then entirely off screen
         if len(colours) == 0:
-            colours += [100*255]
-        return np.mean(np.array(colours)/255)
+            return None
+        return np.array(colours)/255
+    
+    def get_colour_around(self, image):
+        # increase width and use uncommon points to get colour around worm
+        bigger_worm = Camo_Worm(self.x, self.y, self.r, self.theta, self.dr, self.dgamma, self.width*1.3, self.colour)
+        points_bigger = bigger_worm.points_in_worm(n_points_mod=2.0)
+        points_smaller = self.points_in_worm()
+        points_around = list(set(points_bigger) - set(points_smaller))
+
+        colours = []
+        xmin, xmax = [0, image.shape[0]]
+        ymin, ymax = [0, image.shape[1]]
+        for point in points_around:
+            if(    point[1] > xmin
+                and point[1] < xmax
+                and point[0] > ymin
+                and point[0] < ymax ):
+                colours += [image[point[1], point[0]]]
+        # if len 0 then entirely off screen
+        if len(colours) == 0:
+            print("x", self.x,"y", self.y,"r", self.r,"theta", self.theta,"dr", self.dr,"dg", self.dgamma,"width", self.width,"colour", self.colour)
+            print(points_smaller)
+            print(points_around)
+            return None
+        return np.array(colours)/255
 
 
 class Drawing:
