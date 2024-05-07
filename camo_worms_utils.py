@@ -124,9 +124,9 @@ class Camo_Worm:
                 and point[0] > ymin
                 and point[0] < ymax ):
                 colours += [image[point[1], point[0]]]
-        # if len 0 then entirely off screen so penalise
+        # if len 0 then entirely off screen - judy make it white
         if len(colours) == 0:
-            colours += [100*255]
+            colours += [255]
         return np.mean(np.array(colours)/255)
 
 
@@ -167,9 +167,22 @@ class Drawing:
     # lengths chosen from normal distributions with two std parameters passed
     # width chosen from gamma distribution with shape parameter 3 and scale passed
 
-def random_worm (imshape, init_params):
+# def random_worm (imshape, init_params):
+#     (radius_std, deviation_std, width_theta) = init_params
+#     (ylim, xlim) = imshape
+#     midx = xlim * rng.random()
+#     midy = ylim * rng.random()
+#     r = radius_std * np.abs(rng.standard_normal())
+#     theta = rng.random() * np.pi
+#     dr = deviation_std * np.abs(rng.standard_normal())
+#     dgamma = rng.random() * np.pi
+#     colour = rng.random()
+#     width = width_theta * rng.standard_gamma(3)
+#     return Camo_Worm(midx, midy, r, theta, dr, dgamma, width, colour)
+
+def random_worm (image, init_params):
     (radius_std, deviation_std, width_theta) = init_params
-    (ylim, xlim) = imshape
+    (ylim, xlim) = image.shape
     midx = xlim * rng.random()
     midy = ylim * rng.random()
     r = radius_std * np.abs(rng.standard_normal())
@@ -178,14 +191,19 @@ def random_worm (imshape, init_params):
     dgamma = rng.random() * np.pi
     colour = rng.random()
     width = width_theta * rng.standard_gamma(3)
-    return Camo_Worm(midx, midy, r, theta, dr, dgamma, width, colour)
+
+    # set colour to mean colour under
+    worm = Camo_Worm(midx, midy, r, theta, dr, dgamma, width, colour)
+    colour = worm.get_mean_colour_under(image)
+    worm = Camo_Worm(midx, midy, r, theta, dr, dgamma, width, colour)
+    return worm
 
 # Initialise a random clew
 
-def initialise_clew (size, imshape, init_params):
+def initialise_clew (size, image, init_params):
     clew = []
     for i in range(size):
-        clew.append(random_worm(imshape, init_params))
+        clew.append(random_worm(image, init_params))
     return clew
 
 def observe_clew(clew, image):
