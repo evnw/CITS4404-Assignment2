@@ -304,6 +304,55 @@ class Drawing:
             plt.savefig(save)
         plt.show()
 
+
+class Double_Drawing:
+    """
+    An extra utility class that has two images side by side.
+    One with image, one with black background
+    """
+    def __init__ (self, image):
+        self.fig, (self.ax1, self.ax2) = plt.subplots(2)
+        self.image = image
+        self.im1 = self.ax1.imshow(self.image, cmap='gray', origin='lower')
+        self.im2 = self.ax2.imshow(self.image, cmap='gray', vmin=255, vmax=255, origin='lower') # White background
+
+    def add_patches1(self, patches):
+        try:
+            for patch in patches:
+                self.ax1.add_patch(patch)
+        except TypeError:
+            self.ax1.add_patch(patches)
+
+    def add_patches2(self, patches):
+        try:
+            for patch in patches:
+                self.ax2.add_patch(patch)
+        except TypeError:
+            self.ax2.add_patch(patches)
+
+    def add_dots(self, points, radius=4, **kwargs):
+        try:
+            for point in points:
+                self.ax1.add_patch(mpatches.Circle((point[0],point[1]), radius, **kwargs))
+                self.ax2.add_patch(mpatches.Circle((point[0],point[1]), radius, **kwargs))
+        except TypeError:
+            self.ax1.add_patch(mpatches.Circle((points[0],points[1]), radius, **kwargs))
+            self.ax2.add_patch(mpatches.Circle((points[0],points[1]), radius, **kwargs))
+
+    def add_worms(self, worms):
+        try:
+            self.add_patches1([w.patch() for w in worms])
+            self.add_patches2([w.patch() for w in worms])
+        except TypeError:
+            self.add_patches1([worms.patch()])
+            self.add_patches2([worms.patch()])
+
+    def show(self, save=None):
+        if save is not None:
+            plt.savefig(save)
+
+        plt.show()
+
 # Example of a random worm. You may do this differently.
 
     # centre points, angles and colour chosen from uniform distributions
