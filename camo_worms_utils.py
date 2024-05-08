@@ -147,9 +147,9 @@ class Camo_Worm:
                 colours += [image[point[1], point[0]]]
         # if len 0 then entirely off screen
         if len(colours) == 0:
-            print("x", self.x,"y", self.y,"r", self.r,"theta", self.theta,"dr", self.dr,"dg", self.dgamma,"width", self.width,"colour", self.colour)
-            print(points_smaller)
-            print(points_around)
+            #print("x", self.x,"y", self.y,"r", self.r,"theta", self.theta,"dr", self.dr,"dg", self.dgamma,"width", self.width,"colour", self.colour)
+            #print(points_smaller)
+            #print(points_around)
             return None
         return np.array(colours)/255
     
@@ -311,11 +311,13 @@ class Double_Drawing:
     One with image, one with black background
     """
     def __init__ (self, image):
-        self.fig, (self.ax1, self.ax2) = plt.subplots(2)
+        self.fig, (self.ax1, self.ax2, self.ax3) = plt.subplots(3)
         self.image = image
         self.im1 = self.ax1.imshow(self.image, cmap='gray', origin='lower')
-        self.im2 = self.ax2.imshow(self.image, cmap='gray', vmin=255, vmax=255, origin='lower') # White background
+        self.im2 = self.ax2.imshow(self.image, cmap='gray', vmin=254, vmax=255, origin='lower') # White background
+        self.im3 = self.ax3.imshow(self.image, cmap='gray', vmin=0, vmax=1, origin='lower') # Black background
 
+    # The same patch object can't be applied more than once.
     def add_patches1(self, patches):
         try:
             for patch in patches:
@@ -330,22 +332,33 @@ class Double_Drawing:
         except TypeError:
             self.ax2.add_patch(patches)
 
+    def add_patches3(self, patches):
+        try:
+            for patch in patches:
+                self.ax3.add_patch(patch)
+        except TypeError:
+            self.ax3.add_patch(patches)
+
     def add_dots(self, points, radius=4, **kwargs):
         try:
             for point in points:
                 self.ax1.add_patch(mpatches.Circle((point[0],point[1]), radius, **kwargs))
                 self.ax2.add_patch(mpatches.Circle((point[0],point[1]), radius, **kwargs))
+                self.ax3.add_patch(mpatches.Circle((point[0],point[1]), radius, **kwargs))
         except TypeError:
             self.ax1.add_patch(mpatches.Circle((points[0],points[1]), radius, **kwargs))
             self.ax2.add_patch(mpatches.Circle((points[0],points[1]), radius, **kwargs))
+            self.ax3.add_patch(mpatches.Circle((points[0],points[1]), radius, **kwargs))
 
     def add_worms(self, worms):
         try:
             self.add_patches1([w.patch() for w in worms])
             self.add_patches2([w.patch() for w in worms])
+            self.add_patches3([w.patch() for w in worms])
         except TypeError:
             self.add_patches1([worms.patch()])
             self.add_patches2([worms.patch()])
+            self.add_patches3([worms.patch()])
 
     def show(self, save=None):
         if save is not None:
