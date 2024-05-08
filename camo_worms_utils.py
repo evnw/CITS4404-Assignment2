@@ -152,6 +152,125 @@ class Camo_Worm:
             print(points_around)
             return None
         return np.array(colours)/255
+    
+
+    def edge_points (self, intervals, print_results=False):
+        """
+        Genenerates edge points around a worm, based on width
+        """
+        edge_points = []
+
+        # Get Parallels returns two parallel lines separated by a width. 
+        # This is not quite the true edge points as the end caps will be incorrect
+        edge_points = np.array(
+            mbezier.get_parallels(self.control_points(), self.width)
+        )
+
+        # The points returned are control points, not intermediate points.
+        line1 = mbezier.BezierSegment(edge_points[0])
+        line2 = mbezier.BezierSegment(edge_points[1])
+
+        # Borrowed from the intermediate_points() method
+        line1points = line1.point_at_t(np.linspace(0,1,intervals))
+        line2points = line2.point_at_t(np.linspace(0,1,intervals))
+
+        # Merge the two parallel lines into one continuous set of points:
+        merged = np.concatenate((line1points, line2points), axis=0)
+
+        if(print_results):
+            print("control points: \n{}".format(self.control_points()))
+            print("Edge Points: \n{}".format(merged))
+
+        return merged
+    
+
+    def mate(self, partner, image):
+        
+        
+        # 45% chance to pick one parent
+        # 45% chance to pick other
+        # 10% chance to mutate
+
+        (radius_std, deviation_std, width_theta) = (40, 30, 1)
+        (ylim, xlim) = image.shape
+        
+        #centerpoint coord x
+        rand = rng.random() # 0 to 1
+        if(rand < 0.45):       ch_x = self.x
+        elif(rand < 0.9):      ch_x = partner.x
+        else:                  ch_x = xlim * rng.random()
+        #else:                  ch_x = (self.x + partner.x)/2
+
+        #centerpoint coord y
+        rand = rng.random()
+        if(rand < 0.45):       ch_y = self.y
+        elif(rand < 0.9):      ch_y = partner.y
+        else:                  ch_y = ylim * rng.random()
+        #else:                  ch_y = (self.y + partner.y)/2
+
+        #radius
+        rand = rng.random()       
+        if(rand < 0.45):       ch_r = self.r
+        elif(rand < 0.9):      ch_r = partner.r
+        else:                  ch_r = radius_std * np.abs(rng.standard_normal())
+        #else:                  ch_r = (self.r + partner.r)/2
+
+        #angle from x axis
+        rand = rng.random()        
+        if(rand < 0.45):       ch_theta = self.theta
+        elif(rand < 0.9):      ch_theta = partner.theta
+        else:                  ch_theta = rng.random() * np.pi
+        #else:                  ch_theta = (self.theta + partner.theta)/2
+
+        # radius of deviation from midpoint
+        rand = rng.random()        
+        if(rand < 0.45):       ch_dr = self.dr
+        elif(rand < 0.9):      ch_dr = partner.dr
+        else:                  ch_dr = deviation_std * np.abs(rng.standard_normal())
+        #else:                  ch_dr = (self.dr + partner.dr)/2
+
+        #angle of line joining midpoint and curve
+        rand = rng.random()        
+        if(rand < 0.45):       ch_dgamma = self.dgamma
+        elif(rand < 0.9):      ch_dgamma = partner.dgamma
+        else:                  ch_dgamma = rng.random() * np.pi
+        #else:                  ch_dgamma = (self.dgamma + partner.dgamma)/2
+
+        #thickness
+        rand = rng.random()        
+        if(rand < 0.45):       ch_width = self.width
+        elif(rand < 0.9):      ch_width = partner.width
+        else:                  ch_width = width_theta * rng.standard_gamma(3)
+        #else:                  ch_width = (self.width + partner.width)/2
+
+        # worm colour - 0 to 255
+        rand = rng.random()
+        if(rand < 0.45):       ch_colour = self.colour
+        elif(rand < 0.9):      ch_colour = partner.colour
+        else:                  ch_colour = rng.random()
+        #else:                  ch_colour = (self.colour + partner.colour)/2
+        
+        child = Camo_Worm(
+            ch_x,
+            ch_y,
+            ch_r,
+            ch_theta,
+            ch_dr,
+            ch_dgamma,
+            ch_width,
+            ch_colour
+        )
+        
+        """
+        print("Self:")
+        self.print_variables()
+        print("Partner:")
+        partner.print_variables()
+        print("Child:")
+        child.print_variables()
+        """
+        
+        return child
 
 
 class Drawing:
