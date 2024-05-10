@@ -1,12 +1,8 @@
-# adds/changes
-# modified colour_at_t
-# added get_mean_colour_under
-# added get_dots
-
 # Imports
 import numpy as np
 import imageio.v3 as iio
 import math
+import cv2 #pip install opencv-python
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -92,20 +88,31 @@ class Camo_Worm:
         # ignore points outside image
         xmin, xmax = [0, image.shape[0]]
         ymin, ymax = [0, image.shape[1]]
+        image = image / 255
         if(    point[1] > xmin
            and point[1] < xmax
            and point[0] > ymin
            and point[0] < ymax ):
-            colours = image[point[1],point[0]] # reversed as [y, x]
+            colours = abs(image[point[1],point[0]] - self.colour) # reversed as [y, x]
             colour = np.array(colours)/255
             return colour
         else:
-            return -1
+            return 2
     
     # def get_mean_colour_under(self, num_intervals, image):
     #     t_vals = np.linspace(0,1,num_intervals)
     #     avg_colour = np.mean([self.colour_at_t(t, image) for t in t_vals])
     #     return avg_colour
+    def environment_fitness(self, image, points=3):
+        arr = []
+        intermediates = self.intermediate_points(points)
+        image = image / 255
+        for point in intermediates:
+            if (point[0] < 720 and point[1] < 240): 
+                arr.append(abs(self.colour - image[int(point[1]), int(point[0])]))
+            else:
+                arr.append(1)
+        return np.average(arr)
 
     def points_in_worm(self, n_points_mod: float=1.0):
         n_points = math.ceil(self.approx_length() * n_points_mod / self.width)
@@ -272,7 +279,74 @@ class Camo_Worm:
         
         return child
 
+# The worm mask class
+class WormMask:
+    def __init__(self, worm: Camo_Worm, image):
+        self.worm = worm
+        self.points = math.ceil(worm.approx_length() * 5 / worm.width)
+        self.image = image
+        if max(self.image[0]) > 1:
+            self.image = self.image / 255
+        self.mask = self.create_mask()
 
+    # Create a rectangle mask around the worm    
+    def create_mask(self):
+        new_img = np.full(self.image.shape, 0, dtype=np.float64)
+        self.max_x = 0
+        self.min_x = new_img.shape[1]
+        self.max_y = 0
+        self.min_y = new_img.shape[0]
+        pts = self.worm.intermediate_points(self.points)
+        for pt in pts:
+            if pt[0] < new_img.shape[1] and pt[1] < new_img.shape[0]:
+                cv2.circle(new_img, (int(pt[0]), int(pt[1])), int(self.worm.width), self.worm.colour, -1) 
+                self.max_x = int(max(self.max_x, pt[0] + self.worm.width))
+                self.max_y = int(max(self.max_y, pt[1] + self.worm.width))
+                self.min_x = int(min(self.min_x, pt[0] - self.worm.width))
+                self.min_y = int(min(self.min_y, pt[1] - self.worm.width))
+        if self.min_x < 0: self.min_x = 0
+        if self.min_y < 0: self.min_y = 0
+        return new_img[self.min_y:self.max_y, self.min_x:self.max_x]
+    
+    # Crop the image under the mask
+    def crop_xy(self, x, y, width_x, width_y):
+        return self.image[y : y + width_y, x : x + width_x].copy()
+    
+    # Calculate the colour difference between the mask and the image
+    def colour_difference(self):
+        image_crop = self.crop_xy(self.min_x, self.min_y, self.max_x - self.min_x, self.max_y - self.min_y)
+        arr = []
+        for i in range(0, image_crop.shape[0]):
+            for j in range(0, image_crop.shape[1]):
+                if self.mask[i, j] != 0:
+                    arr.append(abs(image_crop[i, j] - self.mask[i, j]))
+        clr_score = np.average(arr) if len(arr) > 500 else 1
+        if clr_score < 0.03:
+            clr_score = 1
+        return clr_score
+    
+    # Calculate the colour difference between the mask and the image with std dev
+    def colour_difference2(self):
+        image_crop = self.crop_xy(self.min_x, self.min_y, self.max_x - self.min_x, self.max_y - self.min_y)
+        arr = []
+        for i in range(0, image_crop.shape[0]):
+            for j in range(0, image_crop.shape[1]):
+                if self.mask[i, j] != 0 and image_crop[i, j] < 0.95:
+                    arr.append(abs(image_crop[i, j] - self.mask[i, j]))
+        clr_score = np.average(arr) if len(arr) > 600 else 1
+        if np.std(arr) > 0.90:
+            clr_score /= 2
+        return clr_score
+    
+    def edge_difference(self):
+        points = self.worm.edge_points(self.points)
+        arr = []
+        for pt in points:
+            if pt[0] < self.image.shape[1] and pt[1] < self.image.shape[0]:
+                arr.append(abs(self.image[int(pt[1]), int(pt[0])] - self.worm.colour))
+        edge_score = np.average(arr) if len(arr) > 0 else 1
+        return edge_score
+    
 class Drawing:
     def __init__ (self, image):
         self.fig, self.ax = plt.subplots()
